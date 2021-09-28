@@ -38,6 +38,31 @@ void rpc_init(const char* rpc_user, const char* rpc_pass, const char* rpc_ipaddr
     curl_init = true;
 }
 
+bool rpc_parseconfig()
+{
+    //! read config file
+    dictionary *ini = NULL;
+    ini = iniparser_load("config/chips.conf");
+    if (!ini) {
+        dlg_error("could not read config/chips.conf");
+        exit(-1);
+    }
+    iniparser_dump(ini, stderr);
+
+    //! collect required rpc details
+    const char *rpc_user = iniparser_getstring(ini, "daemon:rpcuser", NULL);
+    const char *rpc_pass = iniparser_getstring(ini, "daemon:rpcpassword", NULL);
+    const char *rpc_ipaddr = iniparser_getstring(ini, "daemon:rpcbind", NULL);
+    const char *rpc_port = iniparser_getstring(ini, "daemon:rpcport", NULL);
+    if (!rpc_user || !rpc_pass || !rpc_ipaddr || !rpc_port) {
+        dlg_error("config/chips.conf missing rpc details");
+        exit(-1);
+    }
+
+    rpc_init(rpc_user, rpc_pass, rpc_ipaddr, rpc_port);
+    return true;
+}
+
 bool rpc_perform(const char* rpc_method, const char* rpc_param, char* rpc_response)
 {
     CURL* curl = curl_easy_init();
