@@ -23,6 +23,7 @@
 #include "gfshare.h"
 #include "host.h"
 #include "network.h"
+#include "rpc.h"
 #include "table.h"
 #include "storage.h"
 #include "config.h"
@@ -420,6 +421,13 @@ int main(int argc, char **argv)
 
 	bet_set_unique_id();
 	bet_parse_dealer_config_file();
+
+	bool chips_init = rpc_parseconfig(CHIPS);
+	bool lightning_init = rpc_parseconfig(LIGHTNING);
+	if (!chips_init || !lightning_init) {
+		dlg_info("daemon instance(s) not configured/responding\n");
+		exit(-1);
+	}
 
 	if ((argc == 2) && (strcmp(argv[1], "player") == 0)) {
 		playing_nodes_init();
