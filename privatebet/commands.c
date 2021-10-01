@@ -24,6 +24,7 @@
 #include "storage.h"
 #include "commands.h"
 #include "misc.h"
+#include "rpc.h"
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -1374,7 +1375,6 @@ end:
 
 int32_t make_command(int argc, char **argv, cJSON **argjson)
 {
-	FILE *fp = NULL;
 	char *data = NULL, *command = NULL, *buf = NULL;
 	int32_t ret = 1;
 	unsigned long command_size = 16384, data_size = 262144, buf_size = 1024;
@@ -1395,38 +1395,38 @@ int32_t make_command(int argc, char **argv, cJSON **argjson)
 		goto end;
 	}
 
-	for (int i = 0; i < argc; i++) {
-		strcat(command, argv[i]);
-		strcat(command, " ");
+	////////// splice START
+
+	int instance;
+	if (strcmp(argv[0], "chips-cli") == 0)
+		instance = CHIPS;
+	else if (strcmp(argv[0], "lightning-cli") == 0)
+		instance = LIGHTNING;
+	else
+		return(1);
+
+	char params[1024], response[4096];
+	memset(params, 0, sizeof(params));
+	memset(response, 0, sizeof(response));
+
+	if (argc == 2) {
+		rpc_perform(argv[1], NULL, response, instance);
+	} else if (argc == 3) {
+		sprintf(params, "\"%s\"", argv[2]);
+		rpc_perform(argv[1], params, response, instance);
+	} else if (argc == 4) {
+		sprintf(params, "\"%s,%s\"", argv[2], argv[3]);
+		rpc_perform(argv[1], params, response, instance);
+	} else {
+		return(1);
 	}
 
-	/* Open the command for reading. */
-	fp = popen(command, "r");
-	if (fp == NULL) {
-		dlg_info("Failed to run command::%s\n", command);
-		exit(1);
-	}
+	data = calloc(sizeof(response), sizeof(char)); //! this is naughty
+	memcpy(data, response, sizeof(response));
 
-	if (!buf) {
-		dlg_error("Malloc failed\n");
-		goto end;
-	}
-	unsigned long temp_size = 0;
-	unsigned long new_size = data_size;
-	while (fgets(buf, buf_size, fp) != NULL) {
-		temp_size = temp_size + strlen(buf);
-		if (temp_size >= new_size) {
-			char *temp = calloc(new_size, sizeof(char));
-			strncpy(temp, data, strlen(data));
-			free(data);
-			new_size = new_size * 2;
-			data = calloc(new_size, sizeof(char));
-			strncpy(data, temp, strlen(temp));
-			free(temp);
-		}
-		strcat(data, buf);
-		memset(buf, 0x00, buf_size);
-	}
+	////////// splice END
+
+	int new_size = strlen(data);
 	data[new_size - 1] = '\0';
 	if (strcmp(argv[0], "git") == 0) {
 		*argjson = cJSON_CreateString((const char *)data);
@@ -1468,7 +1468,6 @@ end:
 		free(data);
 	if (command)
 		free(command);
-	pclose(fp);
 
 	return ret;
 }
