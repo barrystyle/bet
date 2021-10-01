@@ -105,6 +105,8 @@ void rpc_perform(const char* rpc_method, const char* rpc_param, char* rpc_respon
         else
             sprintf(payload, "{\"jsonrpc\": \"1.0\", \"id\": null, \"method\": \"%s\", \"params\": [%s]}", rpc_method, rpc_param);
 
+        dlg_info("%s on instance %s\n", payload, instance == CHIPS ? "CHIPS" : "LIGHTNING");
+
         //! configure curl object and run request
         headers = curl_slist_append(headers, "content-type: application/json;");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
